@@ -4,31 +4,19 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Xylomania Studio | Kenichi KOGA</title>
-  <meta name="description" content="Xylomania Studio | Kenichi KOGA Links" />
   <meta name="theme-color" content="#0e0e0e" />
   <link rel="icon" href="assets/logo.png" />
   <style>
-    :root{
-      --bg:#0e0e0e; --card:#151515; --text:#f1f1f1; --muted:#9aa0a6; --accent:#1e90ff; --line:#242424;
-    }
+    :root{ --bg:#0e0e0e; --card:#151515; --text:#f1f1f1; --muted:#9aa0a6; --accent:#1e90ff; --line:#242424; }
     *{box-sizing:border-box}
     body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Noto Sans JP",Segoe UI,Roboto,Helvetica,Arial,sans-serif;}
     .visually-hidden{position:absolute!important;clip:rect(1px,1px,1px,1px);clip-path:inset(50%);height:1px;width:1px;overflow:hidden;white-space:nowrap}
     header{padding:40px 20px 18px;text-align:center}
     .logo-wrap{display:flex;justify-content:center}
-    .logo{
-      width:min(520px,82vw);
-      height:auto;
-      image-rendering:auto;
-      filter: drop-shadow(0 6px 24px rgba(0,0,0,.35));
-    }
-    .sub{
-      margin:10px auto 0;
-      font-size:.95rem;
-      color:var(--muted);
-      letter-spacing:.3px;
-    }
-    .wrap{max-width:740px;margin:0 auto;padding:12px 16px 60px}
+    .logo{width:min(520px,82vw);height:auto;filter: drop-shadow(0 6px 24px rgba(0,0,0,.35));}
+    .fallback-title{font-size:1.6rem;font-weight:700;letter-spacing:.3px}
+    .sub{margin:10px auto 0;font-size:.95rem;color:var(--muted);letter-spacing:.3px;}
+    .wrap{max-width:740px;margin:0 auto;padding:12px 16px 80px}
     .toolbar{display:flex;gap:10px;justify-content:flex-end;align-items:center;margin:6px 0 16px}
     .select{background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
     .section{margin:18px 0 8px;padding:8px 4px;border-top:1px solid var(--line);color:#c6c6c6;font-size:.9rem}
@@ -43,14 +31,16 @@
     .btn{flex-shrink:0;display:inline-block;padding:10px 14px;border-radius:10px;background:var(--accent);color:#fff;text-decoration:none;font-weight:600;transition:transform .12s ease, filter .12s ease}
     .btn:hover{transform:translateY(-1px);filter:brightness(0.95)}
     footer{margin:28px 0 40px;text-align:center;color:var(--muted);font-size:.85rem}
+    .diag{position:fixed;left:12px;right:12px;bottom:12px;max-width:740px;margin:0 auto;background:#111;border:1px solid var(--line);color:#bbb;border-radius:10px;padding:8px 10px;font-size:.8rem}
   </style>
 </head>
 <body>
   <header>
     <h1 class="visually-hidden">Xylomania Studio</h1>
     <div class="logo-wrap">
-      <!-- ここにロゴ。assets/logo.png を置く -->
-      <img src="assets/logo.png" class="logo" alt="シロマニアスタジオ（Xylomania Studio LLC）のロゴ" loading="eager" decoding="async">
+      <!-- ロゴ：assets/logo.png を置く。失敗時はテキストにフォールバック -->
+      <img id="logo" src="./assets/logo.png" class="logo" alt="Xylomania Studio ロゴ" loading="eager" decoding="async"
+           onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'fallback-title',textContent:'Xylomania Studio'}));">
     </div>
     <div class="sub">Kenichi KOGA</div>
   </header>
@@ -67,25 +57,43 @@
     <footer>© 2025 Xylomania Studio / Kenichi KOGA</footer>
   </div>
 
+  <div id="diag" class="diag" role="status" aria-live="polite">準備中…</div>
+
   <script>
-    // ===== スプシ公開CSV（このまま使えます） =====
+    // === 設定 ===
     const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTXGWHo3tYmufoXCj4tLN7Selc6FLuHz29299EddOOiO6M15aspdLsiBKUIb_4V21owhBwMyreD87nv/pub?gid=0&single=true&output=csv";
 
-    // ===== CSV取得＆パース =====
+    // 日本語ヘッダー -> 英語キーへマッピング
+    const HEADER_ALIASES = {
+      "タイトル":"title", "title":"title",
+      "リンク":"url", "url":"url",
+      "グループ":"group", "group":"group",
+      "絵文字":"emoji", "emoji":"emoji",
+      "表示":"enabled", "enabled":"enabled",
+      "順序":"order", "order":"order",
+      "メモ":"note", "注記":"note", "note":"note"
+    };
+
+    // --- 診断表示 ---
+    const diag = (msg) => { document.getElementById('diag').textContent = msg; console.log(msg); };
+
+    // --- CSV取得 ---
     async function fetchCSV(url){
       const res = await fetch(url + "&cb=" + Date.now(), {cache:"no-store"});
-      if(!res.ok) throw new Error("CSV fetch failed");
+      if(!res.ok) throw new Error(`CSV fetch failed: ${res.status}`);
       return await res.text();
     }
+
+    // --- CSVパース（クォート対応） ---
     function parseCSV(text){
       const rows = [];
-      let row = [], cell = "", inQuotes = false;
+      let row=[], cell="", inQuotes=false;
       for(let i=0;i<text.length;i++){
-        const c = text[i], n = text[i+1];
-        if(c === '"' && !inQuotes){ inQuotes = true; continue; }
+        const c=text[i], n=text[i+1];
+        if(c === '"' && !inQuotes){ inQuotes=true; continue; }
         if(c === '"' && inQuotes){
-          if(n === '"'){ cell += '"'; i++; continue; }
-          inQuotes = false; continue;
+          if(n === '"'){ cell+='"'; i++; continue; }
+          inQuotes=false; continue;
         }
         if(c === ',' && !inQuotes){ row.push(cell); cell=""; continue; }
         if((c === '\n' || c === '\r') && !inQuotes){
@@ -97,12 +105,19 @@
       if(cell.length || row.length){ row.push(cell); rows.push(row); }
       return rows;
     }
+
+    function mapHeaderKeys(headers){
+      return headers.map(h => HEADER_ALIASES[h.trim().toLowerCase()] || h.trim().toLowerCase());
+    }
+
     function toObjects(rows){
-      const header = rows.shift().map(h => h.trim().toLowerCase());
+      const headerRaw = rows.shift().map(h => h.trim());
+      const header = mapHeaderKeys(headerRaw);
       return rows
         .filter(r => r.some(v => String(v).trim() !== ""))
         .map(r => { const o={}; header.forEach((h,i)=>o[h]=(r[i]||"").trim()); return o; });
     }
+
     function normalize(items){
       return items
         .map(x => ({
@@ -110,14 +125,16 @@
           url:    x.url    || "",
           group:  x.group  || "Links",
           emoji:  x.emoji  || "",
-          enabled: String(x.enabled||"").toLowerCase() !== "false" && String(x.enabled||"").toLowerCase() !== "no",
+          enabled: String(x.enabled||"").toLowerCase() !== "false" && String(x.enabled||"").toLowerCase() !== "no" && String(x.enabled||"").toLowerCase() !== "0",
           order:  isNaN(Number(x.order)) ? 9999 : Number(x.order),
           note:   x.note   || ""
         }))
         .filter(x => x.title && x.url && x.enabled)
         .sort((a,b) => (a.group.localeCompare(b.group) || a.order - b.order || a.title.localeCompare(b.title)));
     }
+
     function uniq(arr){ return [...new Set(arr)]; }
+
     function render(groups, filter=""){
       const root = document.getElementById("content");
       root.innerHTML = "";
@@ -173,11 +190,13 @@
         root.appendChild(section);
       });
     }
+
     function buildGroups(items){
       const groups = {};
       items.forEach(i => { if(!groups[i.group]) groups[i.group] = []; groups[i.group].push(i); });
       return groups;
     }
+
     function fillFilter(groups){
       const sel = document.getElementById("groupFilter");
       const current = sel.value;
@@ -189,12 +208,20 @@
       });
       sel.value = current || "";
     }
+
     async function main(){
       try{
+        diag("CSVを取得中…");
         const raw = await fetchCSV(CSV_URL);
+        diag("CSVを解析中…");
         const rows = parseCSV(raw);
         const objs = toObjects(rows);
         const items = normalize(objs);
+        if(items.length === 0){
+          diag("有効な行が見つかりません。ヘッダー/値をご確認ください。");
+        }else{
+          diag(`${items.length} 件のリンクを読み込みました。`);
+        }
         const groups = buildGroups(items);
         fillFilter(groups);
         render(groups);
@@ -202,8 +229,9 @@
           render(groups, e.target.value);
         });
       }catch(e){
+        diag("読み込みに失敗：CSVの公開設定・URLをご確認ください。");
         document.getElementById("content").innerHTML =
-          `<p style="color:#f88">データの読み込みに失敗しました。CSVの公開設定とURLをご確認ください。</p>`;
+          `<p style="color:#f88">データの読み込みに失敗しました。CSVの「ウェブに公開」設定や列名をご確認ください。</p>`;
         console.error(e);
       }
     }
