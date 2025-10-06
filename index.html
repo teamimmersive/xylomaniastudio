@@ -28,4 +28,306 @@
       padding: 40px 20px 18px;
       text-align: center;
     }
-    .logo { width: m
+    .logo { width: min(520px,82vw); height: auto; }
+
+    .sub {
+      margin-top: 10px;
+      font-size: 0.95rem;
+      color: var(--muted);
+    }
+
+    .wrap {
+      max-width: 740px;
+      margin: 0 auto;
+      padding: 12px 16px 80px;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      align-items: center;
+      margin: 6px 0 16px;
+    }
+    .select {
+      background: var(--card);
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px 10px;
+    }
+
+    .section {
+      margin: 18px 0 8px;
+      padding: 8px 4px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+    @media(min-width:560px){ .grid{ grid-template-columns:1fr 1fr; } }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      transition: background 0.2s ease;
+    }
+    .card:hover { background: #eee; }
+
+    .left {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      min-width: 0;
+    }
+
+    .emoji { font-size: 1.25rem; line-height: 1; }
+
+    a.title-link {
+      text-decoration: none;
+      color: var(--text);
+      display: block;
+      flex: 1;
+    }
+
+    .title {
+      font-size: 1.02rem;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .note {
+      font-size: 0.86rem;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .btn {
+      flex-shrink: 0;
+      display: inline-block;
+      padding: 10px 14px;
+      border-radius: 10px;
+      background: var(--accent);
+      color: #fff;
+      text-decoration: none;
+      font-weight: 600;
+      transition: transform .12s ease, filter .12s ease;
+    }
+    .btn:hover { transform: translateY(-1px); filter: brightness(0.9); }
+
+    footer {
+      margin: 28px 0 40px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    .diag {
+      position: fixed;
+      left: 12px;
+      right: 12px;
+      bottom: 12px;
+      max-width: 740px;
+      margin: 0 auto;
+      background: #f1f1f1;
+      border: 1px solid var(--line);
+      color: #666;
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="logo.png" class="logo" alt="Xylomania Studio ロゴ" loading="eager" decoding="async">
+    <div class="sub">Kenichi KOGA</div>
+  </header>
+
+  <div class="wrap">
+    <div class="toolbar">
+      <select id="groupFilter" class="select" aria-label="グループで絞り込み">
+        <option value="">すべて表示</option>
+      </select>
+    </div>
+
+    <div id="content" aria-live="polite"></div>
+
+    <footer>© 2025 Xylomania Studio / Kenichi KOGA</footer>
+  </div>
+
+  <div id="diag" class="diag" role="status" aria-live="polite">準備中…</div>
+
+  <script>
+    const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTXGWHo3tYmufoXCj4tLN7Selc6FLuHz29299EddOOiO6M15aspdLsiBKUIb_4V21owhBwMyreD87nv/pub?gid=0&single=true&output=csv";
+
+    const HEADER_ALIASES = {
+      "タイトル":"title","リンク":"url","グループ":"group",
+      "絵文字":"emoji","表示":"enabled","順序":"order","メモ":"note"
+    };
+
+    const diag = msg => { document.getElementById('diag').textContent = msg; console.log(msg); };
+
+    async function fetchCSV(url){
+      const res = await fetch(url + "&cb=" + Date.now(), {cache:"no-store"});
+      if(!res.ok) throw new Error(`CSV fetch failed: ${res.status}`);
+      return await res.text();
+    }
+
+    function parseCSV(text){
+      const rows=[]; let row=[],cell="",inQuotes=false;
+      for(let i=0;i<text.length;i++){
+        const c=text[i],n=text[i+1];
+        if(c==='"'&&!inQuotes){inQuotes=true;continue;}
+        if(c==='"'&&inQuotes){
+          if(n==='"'){cell+='"';i++;continue;}
+          inQuotes=false;continue;
+        }
+        if(c===','&&!inQuotes){row.push(cell);cell="";continue;}
+        if((c==='\n'||c==='\r')&&!inQuotes){
+          if(cell.length||row.length){row.push(cell);rows.push(row);row=[];cell="";}
+          continue;
+        }
+        cell+=c;
+      }
+      if(cell.length||row.length){row.push(cell);rows.push(row);}
+      return rows;
+    }
+
+    function mapHeaderKeys(headers){
+      return headers.map(h => HEADER_ALIASES[h.trim()] || h.trim());
+    }
+
+    function toObjects(rows){
+      const headerRaw=rows.shift().map(h=>h.trim());
+      const header=mapHeaderKeys(headerRaw);
+      return rows.filter(r=>r.some(v=>String(v).trim()!==""))
+        .map(r=>{const o={};header.forEach((h,i)=>o[h]=(r[i]||"").trim());return o;});
+    }
+
+    function normalize(items){
+      return items.map(x=>({
+        title:x.title||"",
+        url:x.url||"",
+        group:x.group||"Links",
+        emoji:x.emoji||"",
+        enabled:String(x.enabled||"").toLowerCase()!=="false",
+        order:isNaN(Number(x.order))?9999:Number(x.order),
+        note:x.note||""
+      }))
+      .filter(x=>x.title&&x.url&&x.enabled)
+      .sort((a,b)=>a.group.localeCompare(b.group)||a.order-b.order||a.title.localeCompare(b.title));
+    }
+
+    function uniq(arr){return[...new Set(arr)];}
+
+    function render(groups,filter=""){
+      const root=document.getElementById("content");
+      root.innerHTML="";
+      const keys=Object.keys(groups).filter(g=>!filter||g===filter);
+      keys.forEach(group=>{
+        const section=document.createElement("div");
+        const h=document.createElement("div");
+        h.className="section";
+        h.textContent=group;
+        section.appendChild(h);
+
+        const grid=document.createElement("div");
+        grid.className="grid";
+        groups[group].forEach(item=>{
+          const card=document.createElement("div");
+          card.className="card";
+
+          const left=document.createElement("div");
+          left.className="left";
+
+          if(item.emoji){
+            const em=document.createElement("div");
+            em.className="emoji";
+            em.textContent=item.emoji;
+            left.appendChild(em);
+          }
+
+          const link=document.createElement("a");
+          link.href=item.url;
+          link.target="_blank";
+          link.rel="noopener";
+          link.className="title-link";
+
+          const ttl=document.createElement("div");
+          ttl.className="title";
+          ttl.textContent=item.title;
+          link.appendChild(ttl);
+
+          if(item.note){
+            const note=document.createElement("div");
+            note.className="note";
+            note.textContent=item.note;
+            link.appendChild(note);
+          }
+
+          left.appendChild(link);
+          card.appendChild(left);
+          grid.appendChild(card);
+        });
+
+        section.appendChild(grid);
+        root.appendChild(section);
+      });
+    }
+
+    function buildGroups(items){
+      const groups={};
+      items.forEach(i=>{if(!groups[i.group])groups[i.group]=[];groups[i.group].push(i);});
+      return groups;
+    }
+
+    function fillFilter(groups){
+      const sel=document.getElementById("groupFilter");
+      const current=sel.value;
+      sel.innerHTML='<option value="">すべて表示</option>';
+      uniq(Object.keys(groups)).forEach(g=>{
+        const opt=document.createElement("option");
+        opt.value=g;opt.textContent=g;
+        sel.appendChild(opt);
+      });
+      sel.value=current||"";
+    }
+
+    async function main(){
+      try{
+        diag("CSVを取得中…");
+        const raw=await fetchCSV(CSV_URL);
+        diag("CSVを解析中…");
+        const rows=parseCSV(raw);
+        const objs=toObjects(rows);
+        const items=normalize(objs);
+        if(items.length===0){diag("有効な行が見つかりません。");}
+        else{diag(`${items.length}件のリンクを読み込みました。`);}
+        const groups=buildGroups(items);
+        fillFilter(groups);
+        render(groups);
+        document.getElementById("groupFilter").addEventListener("change",e=>render(groups,e.target.value));
+      }catch(e){
+        diag("読み込み失敗：CSV設定をご確認ください。");
+        console.error(e);
+      }
+    }
+    main();
+  </script>
+</body>
+</html>
