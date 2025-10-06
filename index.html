@@ -2,98 +2,212 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Xylomania Studio | Kenichi KOGA</title>
+  <meta name="description" content="Xylomania Studio | Kenichi KOGA Links" />
+  <meta name="theme-color" content="#0e0e0e" />
+  <link rel="icon" href="assets/logo.png" />
   <style>
-    :root {
-      --accent: #1e90ff;
-      --bg: #0e0e0e;
-      --text: #f2f2f2;
+    :root{
+      --bg:#0e0e0e; --card:#151515; --text:#f1f1f1; --muted:#9aa0a6; --accent:#1e90ff; --line:#242424;
     }
-
-    body {
-      font-family: "Noto Sans JP", sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      margin: 0;
-      padding: 0;
-      text-align: center;
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Noto Sans JP",Segoe UI,Roboto,Helvetica,Arial,sans-serif;}
+    .visually-hidden{position:absolute!important;clip:rect(1px,1px,1px,1px);clip-path:inset(50%);height:1px;width:1px;overflow:hidden;white-space:nowrap}
+    header{padding:40px 20px 18px;text-align:center}
+    .logo-wrap{display:flex;justify-content:center}
+    .logo{
+      width:min(520px,82vw);
+      height:auto;
+      image-rendering:auto;
+      filter: drop-shadow(0 6px 24px rgba(0,0,0,.35));
     }
-
-    header {
-      padding: 60px 20px 30px;
+    .sub{
+      margin:10px auto 0;
+      font-size:.95rem;
+      color:var(--muted);
+      letter-spacing:.3px;
     }
-
-    h1 {
-      font-size: 1.6rem;
-      margin: 0;
-      letter-spacing: 1px;
-      font-weight: 600;
-    }
-
-    h2 {
-      font-size: 1rem;
-      font-weight: 400;
-      color: #aaa;
-      margin-top: 8px;
-    }
-
-    .links {
-      max-width: 420px;
-      margin: 0 auto;
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-    }
-
-    a.link {
-      display: block;
-      background: var(--accent);
-      color: white;
-      text-decoration: none;
-      padding: 14px 0;
-      border-radius: 12px;
-      font-size: 1.05rem;
-      transition: 0.2s;
-    }
-
-    a.link:hover {
-      background: #0066cc;
-      transform: translateY(-2px);
-    }
-
-    footer {
-      margin-top: 50px;
-      padding: 20px;
-      font-size: 0.8rem;
-      color: #777;
-    }
-
-    @media (max-width: 600px) {
-      h1 { font-size: 1.4rem; }
-      .links { gap: 12px; }
-      a.link { font-size: 1rem; }
-    }
+    .wrap{max-width:740px;margin:0 auto;padding:12px 16px 60px}
+    .toolbar{display:flex;gap:10px;justify-content:flex-end;align-items:center;margin:6px 0 16px}
+    .select{background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+    .section{margin:18px 0 8px;padding:8px 4px;border-top:1px solid var(--line);color:#c6c6c6;font-size:.9rem}
+    .grid{display:grid;grid-template-columns:1fr;gap:12px}
+    @media(min-width:560px){ .grid{grid-template-columns:1fr 1fr} }
+    .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;display:flex;gap:12px;align-items:center;justify-content:space-between}
+    .card + .card{margin-top:12px}
+    .left{display:flex;gap:12px;align-items:center;min-width:0}
+    .emoji{font-size:1.25rem;line-height:1}
+    .title{font-size:1.02rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .note{font-size:.86rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .btn{flex-shrink:0;display:inline-block;padding:10px 14px;border-radius:10px;background:var(--accent);color:#fff;text-decoration:none;font-weight:600;transition:transform .12s ease, filter .12s ease}
+    .btn:hover{transform:translateY(-1px);filter:brightness(0.95)}
+    footer{margin:28px 0 40px;text-align:center;color:var(--muted);font-size:.85rem}
   </style>
 </head>
-
 <body>
   <header>
-    <h1>Xylomania Studio</h1>
-    <h2>Kenichi KOGA</h2>
+    <h1 class="visually-hidden">Xylomania Studio</h1>
+    <div class="logo-wrap">
+      <!-- ここにロゴ。assets/logo.png を置く -->
+      <img src="assets/logo.png" class="logo" alt="シロマニアスタジオ（Xylomania Studio LLC）のロゴ" loading="eager" decoding="async">
+    </div>
+    <div class="sub">Kenichi KOGA</div>
   </header>
 
-  <main class="links">
-    <a href="https://x.com/XylomaniaStudio" class="link" target="_blank">X（Twitter）</a>
-    <a href="https://www.youtube.com/@XylomaniaStudio" class="link" target="_blank">YouTube</a>
-    <a href="https://note.com/xylomania" class="link" target="_blank">note</a>
-    <a href="https://xylomania.studio" class="link" target="_blank">Official Website</a>
-    <a href="mailto:info@xylomania.studio" class="link">Contact</a>
-  </main>
+  <div class="wrap">
+    <div class="toolbar">
+      <select id="groupFilter" class="select" aria-label="グループで絞り込み">
+        <option value="">すべて表示</option>
+      </select>
+    </div>
 
-  <footer>
-    © 2025 Xylomania Studio / Kenichi KOGA
-  </footer>
+    <div id="content" aria-live="polite"></div>
+
+    <footer>© 2025 Xylomania Studio / Kenichi KOGA</footer>
+  </div>
+
+  <script>
+    // ===== スプシ公開CSV（このまま使えます） =====
+    const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTXGWHo3tYmufoXCj4tLN7Selc6FLuHz29299EddOOiO6M15aspdLsiBKUIb_4V21owhBwMyreD87nv/pub?gid=0&single=true&output=csv";
+
+    // ===== CSV取得＆パース =====
+    async function fetchCSV(url){
+      const res = await fetch(url + "&cb=" + Date.now(), {cache:"no-store"});
+      if(!res.ok) throw new Error("CSV fetch failed");
+      return await res.text();
+    }
+    function parseCSV(text){
+      const rows = [];
+      let row = [], cell = "", inQuotes = false;
+      for(let i=0;i<text.length;i++){
+        const c = text[i], n = text[i+1];
+        if(c === '"' && !inQuotes){ inQuotes = true; continue; }
+        if(c === '"' && inQuotes){
+          if(n === '"'){ cell += '"'; i++; continue; }
+          inQuotes = false; continue;
+        }
+        if(c === ',' && !inQuotes){ row.push(cell); cell=""; continue; }
+        if((c === '\n' || c === '\r') && !inQuotes){
+          if(cell.length || row.length){ row.push(cell); rows.push(row); row=[]; cell=""; }
+          continue;
+        }
+        cell += c;
+      }
+      if(cell.length || row.length){ row.push(cell); rows.push(row); }
+      return rows;
+    }
+    function toObjects(rows){
+      const header = rows.shift().map(h => h.trim().toLowerCase());
+      return rows
+        .filter(r => r.some(v => String(v).trim() !== ""))
+        .map(r => { const o={}; header.forEach((h,i)=>o[h]=(r[i]||"").trim()); return o; });
+    }
+    function normalize(items){
+      return items
+        .map(x => ({
+          title:  x.title  || "",
+          url:    x.url    || "",
+          group:  x.group  || "Links",
+          emoji:  x.emoji  || "",
+          enabled: String(x.enabled||"").toLowerCase() !== "false" && String(x.enabled||"").toLowerCase() !== "no",
+          order:  isNaN(Number(x.order)) ? 9999 : Number(x.order),
+          note:   x.note   || ""
+        }))
+        .filter(x => x.title && x.url && x.enabled)
+        .sort((a,b) => (a.group.localeCompare(b.group) || a.order - b.order || a.title.localeCompare(b.title)));
+    }
+    function uniq(arr){ return [...new Set(arr)]; }
+    function render(groups, filter=""){
+      const root = document.getElementById("content");
+      root.innerHTML = "";
+      const keys = Object.keys(groups).filter(g => !filter || g === filter);
+      keys.forEach(group => {
+        const section = document.createElement("div");
+        const h = document.createElement("div");
+        h.className = "section";
+        h.textContent = group;
+        section.appendChild(h);
+
+        const grid = document.createElement("div");
+        grid.className = "grid";
+        groups[group].forEach(item => {
+          const card = document.createElement("div");
+          card.className = "card";
+
+          const left = document.createElement("div");
+          left.className = "left";
+
+          if(item.emoji){
+            const em = document.createElement("div");
+            em.className = "emoji";
+            em.textContent = item.emoji;
+            left.appendChild(em);
+          }
+
+          const textWrap = document.createElement("div");
+          textWrap.style.minWidth = "0";
+          const ttl = document.createElement("div");
+          ttl.className = "title";
+          ttl.textContent = item.title;
+          const note = document.createElement("div");
+          note.className = "note";
+          note.textContent = item.note || "";
+          textWrap.appendChild(ttl);
+          if(item.note) textWrap.appendChild(note);
+          left.appendChild(textWrap);
+
+          const btn = document.createElement("a");
+          btn.className = "btn";
+          btn.href = item.url;
+          btn.target = "_blank";
+          btn.rel = "noopener";
+          btn.textContent = "Open";
+
+          card.appendChild(left);
+          card.appendChild(btn);
+          grid.appendChild(card);
+        });
+
+        section.appendChild(grid);
+        root.appendChild(section);
+      });
+    }
+    function buildGroups(items){
+      const groups = {};
+      items.forEach(i => { if(!groups[i.group]) groups[i.group] = []; groups[i.group].push(i); });
+      return groups;
+    }
+    function fillFilter(groups){
+      const sel = document.getElementById("groupFilter");
+      const current = sel.value;
+      sel.innerHTML = '<option value="">すべて表示</option>';
+      uniq(Object.keys(groups)).forEach(g => {
+        const opt = document.createElement("option");
+        opt.value = g; opt.textContent = g;
+        sel.appendChild(opt);
+      });
+      sel.value = current || "";
+    }
+    async function main(){
+      try{
+        const raw = await fetchCSV(CSV_URL);
+        const rows = parseCSV(raw);
+        const objs = toObjects(rows);
+        const items = normalize(objs);
+        const groups = buildGroups(items);
+        fillFilter(groups);
+        render(groups);
+        document.getElementById("groupFilter").addEventListener("change", e => {
+          render(groups, e.target.value);
+        });
+      }catch(e){
+        document.getElementById("content").innerHTML =
+          `<p style="color:#f88">データの読み込みに失敗しました。CSVの公開設定とURLをご確認ください。</p>`;
+        console.error(e);
+      }
+    }
+    main();
+  </script>
 </body>
 </html>
