@@ -65,12 +65,8 @@
       font-size: 0.9rem;
     }
 
-    .grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 12px;
-    }
-    @media(min-width:560px){ .grid{ grid-template-columns:1fr 1fr; } }
+    .grid{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:560px){ .grid{grid-template-columns:1fr} }
 
     .card {
       background: var(--card);
