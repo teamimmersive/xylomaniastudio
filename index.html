@@ -169,18 +169,13 @@
   <div id="diag" class="diag" role="status" aria-live="polite">準備中…</div>
 
 <script>
-  // ===== スプシ 公開CSV =====
+  // 公開CSV
   const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTXGWHo3tYmufoXCj4tLN7Selc6FLuHz29299EddOOiO6M15aspdLsiBKUIb_4V21owhBwMyreD87nv/pub?gid=0&single=true&output=csv";
+  const diag = (m)=>{ document.getElementById('diag').textContent = m; console.log(m); };
 
-  // 右下に出る診断表示
-  const diag = (msg) => { document.getElementById('diag').textContent = msg; console.log(msg); };
-
-  // 見出し（ヘッダー）のゆらぎ吸収
-  function norm(h){
-    return String(h||"").toLowerCase()
-      .replace(/\s+/g,"").replace(/[＿‐ー−―\-]/g,"-")
-      .replace(/[：:]/g,":").replace(/[（）\(\)]/g,"").replace(/　/g,"");
-  }
+  // 見出しゆらぎ吸収
+  function norm(h){ return String(h||"").toLowerCase()
+    .replace(/\s+/g,"").replace(/[＿‐ー−―\-]/g,"-").replace(/[：:]/g,":").replace(/[（）()\u3000]/g,""); }
   const HEADER_ALIASES = {
     "title":"title","name":"title","タイトル":"title","題名":"title","名称":"title",
     "url":"url","link":"url","リンク":"url",
@@ -193,169 +188,118 @@
   function mapHeaderKeys(headers){
     return headers.map(raw=>{
       const h = norm(raw);
-      for (const [k,v] of Object.entries(HEADER_ALIASES)){ if (norm(k)===h) return v; }
+      for(const [k,v] of Object.entries(HEADER_ALIASES)){ if(norm(k)===h) return v; }
       return String(raw).trim().toLowerCase();
     });
   }
 
-  // CSV取得
-  async function fetchCSV(url){
-    const res = await fetch(url + "&cb=" + Date.now(), {cache:"no-store"});
-    if(!res.ok) throw new Error(`CSV fetch failed: ${res.status}`);
-    return await res.text();
-  }
-
-  // CSVパース（クォート対応）
-  function parseCSV(text){
-    const rows=[]; let row=[],cell="",inQuotes=false;
-    for(let i=0;i<text.length;i++){
-      const c=text[i], n=text[i+1];
-      if(c==='\"' && !inQuotes){ inQuotes=true; continue; }
-      if(c==='\"' && inQuotes){ if(n==='\"'){ cell+='\"'; i++; continue; } inQuotes=false; continue; }
-      if(c===',' && !inQuotes){ row.push(cell); cell=""; continue; }
-      if((c==='\n'||c==='\r') && !inQuotes){ if(cell.length||row.length){ row.push(cell); rows.push(row); row=[]; cell=""; } continue; }
-      cell += c;
+  // CSV取得 & パース
+  async function fetchCSV(u){ const r=await fetch(u+"&cb="+Date.now(),{cache:"no-store"}); if(!r.ok) throw new Error("CSV fetch failed:"+r.status); return r.text(); }
+  function parseCSV(t){
+    const rows=[]; let row=[],cell="",q=false;
+    for(let i=0;i<t.length;i++){
+      const c=t[i],n=t[i+1];
+      if(c==='\"'&&!q){q=true;continue;}
+      if(c==='\"'&&q){ if(n==='\"'){cell+='\"';i++;continue;} q=false;continue; }
+      if(c===','&&!q){row.push(cell);cell="";continue;}
+      if((c==='\n'||c==='\r')&&!q){ if(cell.length||row.length){row.push(cell);rows.push(row);row=[];cell="";} continue;}
+      cell+=c;
     }
-    if(cell.length||row.length){ row.push(cell); rows.push(row); }
+    if(cell.length||row.length){row.push(cell);rows.push(row);}
     return rows;
   }
 
+  // 行→オブジェクト（元シートの行番号を保持）
   function toObjects(rows){
-    const headerRaw = (rows.shift()||[]).map(h=>h.trim());
-    const header = mapHeaderKeys(headerRaw);
-    return rows
-      .filter(r => r && r.some(v => String(v).trim()!==""))
-      .map(r => { const o={}; header.forEach((h,i)=>o[h]=(r[i]||"").trim()); return o; });
+    const headerRaw=(rows.shift()||[]).map(h=>h.trim());
+    const header=mapHeaderKeys(headerRaw);
+    return rows.map((r,i)=>r&&r.some(v=>String(v).trim()!=="")?{r,i}:null).filter(Boolean)
+      .map(({r,i})=>{const o={}; header.forEach((h,idx)=>o[h]=(r[idx]||"").trim()); o.__idx=i; return o;});
   }
 
-  // ←ここが肝！順序を確実に数値化（全角や「1位」「#1」でもOK）
-  function toNum(v){
-    const s = String(v ?? "")
-      .replace(/[０-９]/g, d => String.fromCharCode(d.charCodeAt(0) - 0xFEE0)) // 全角→半角
-      .replace(/[^\d\-]/g, "")  // 数字とマイナス以外を除去
-      .trim();
-    const n = Number(s);
-    return Number.isFinite(n) ? n : 9999;   // 数字でなければ末尾へ
+  // 数値化（全角/「1位」/「#1」等もOK）
+  function toNumOrNull(v){
+    const s=String(v??"").replace(/[０-９]/g,d=>String.fromCharCode(d.charCodeAt(0)-0xFEE0)).replace(/[^\d\-]/g,"").trim();
+    if(s==="") return null; const n=Number(s); return Number.isFinite(n)?n:null;
   }
+  function truthy(v){ const s=String(v||"").trim().toLowerCase(); return !(s==="false"||s==="no"||s==="0"||s==="off"||s==="×"||s==="ng"); }
 
-  function truthy(v){
-    const s = String(v||"").trim().toLowerCase();
-    return !(s==="false"||s==="no"||s==="0"||s==="off"||s==="×"||s==="ng");
-  }
-
+  // 正規化
   function normalize(items){
     return items.map(x=>({
-      title: x.title || "",
-      url: x.url || "",
-      group: x.group || "Links",
-      emoji: x.emoji || "",
-      enabled: truthy(x.enabled),       // 空欄は表示扱い
-      order: toNum(x.order),            // ここで数値化
-      note: x.note || ""
+      title:x.title||"", url:x.url||"", group:x.group||"Links", emoji:x.emoji||"",
+      enabled:truthy(x.enabled), order:toNumOrNull(x.order), note:x.note||"", index:x.__idx
     }))
-    .filter(x => x.title && x.url && x.enabled)
-    // ←ここが肝！グループ内で「順序の昇順（1→2→3）」に並べる
-    .sort((a,b) =>
-      a.group.localeCompare(b.group, 'ja') ||
-      a.order - b.order ||
-      a.title.localeCompare(b.title, 'ja')
-    );
+    .filter(x=>x.title&&x.url&&x.enabled);
   }
 
-  function uniq(arr){ return [...new Set(arr)]; }
-
-  function render(groups, filter=""){
-    const root = document.getElementById("content");
-    root.innerHTML = "";
-    const keys = Object.keys(groups).filter(g => !filter || g===filter);
-    keys.forEach(group=>{
-      const section = document.createElement("div");
-      const h = document.createElement("div");
-      h.className = "section";
-      h.textContent = group;
-      section.appendChild(h);
-
-      const grid = document.createElement("div");
-      grid.className = "grid";
-      groups[group].forEach(item=>{
-        const card = document.createElement("div");
-        card.className = "card";
-
-        const left = document.createElement("div");
-        left.className = "left";
-
-        if(item.emoji){
-          const em = document.createElement("div");
-          em.className = "emoji";
-          em.textContent = item.emoji;
-          left.appendChild(em);
-        }
-
-        const link = document.createElement("a");
-        link.href = item.url;
-        link.target = "_blank";
-        link.rel = "noopener";
-        link.className = "title-link";
-
-        const ttl = document.createElement("div");
-        ttl.className = "title";
-        ttl.textContent = item.title;
-        link.appendChild(ttl);
-
-        if(item.note){
-          const note = document.createElement("div");
-          note.className = "note";
-          note.textContent = item.note;
-          link.appendChild(note);
-        }
-
-        left.appendChild(link);
-        card.appendChild(left);
-        grid.appendChild(card);
-      });
-
-      section.appendChild(grid);
-      document.getElementById("content").appendChild(section);
+  // ★グローバルに「順序の昇順 → 行順」で並べる（グループは“切れ目見出し”として挿入）
+  function sortGlobal(items){
+    const hasOrder = items.some(it=>it.order!==null);
+    return items.slice().sort((a,b)=>{
+      if(hasOrder){
+        const ao=(a.order===null?Number.POSITIVE_INFINITY:a.order);
+        const bo=(b.order===null?Number.POSITIVE_INFINITY:b.order);
+        if(ao!==bo) return ao-bo;       // 順序の昇順
+        return a.index-b.index;         // 同値は元の行順
+      }else{
+        return a.index-b.index;         // すべて空なら行順
+      }
     });
   }
 
-  function buildGroups(items){
-    const groups={};
-    items.forEach(i=>{ if(!groups[i.group]) groups[i.group]=[]; groups[i.group].push(i); });
-    return groups;
+  // グローバル順に出力しつつ、グループが変わる所だけ見出しを入れる
+  function renderGlobal(sorted, filter=""){
+    const root=document.getElementById("content"); root.innerHTML="";
+    let cur=null, grid=null;
+    sorted.forEach(item=>{
+      if(filter && item.group!==filter) return;
+      if(item.group!==cur){
+        cur=item.group;
+        const section=document.createElement("div");
+        const h=document.createElement("div"); h.className="section"; h.textContent=cur; section.appendChild(h);
+        grid=document.createElement("div"); grid.className="grid"; section.appendChild(grid);
+        root.appendChild(section);
+      }
+      const card=document.createElement("div"); card.className="card";
+      const left=document.createElement("div"); left.className="left";
+      if(item.emoji){ const em=document.createElement("div"); em.className="emoji"; em.textContent=item.emoji; left.appendChild(em); }
+      const link=document.createElement("a"); link.href=item.url; link.target="_blank"; link.rel="noopener"; link.className="title-link";
+      const ttl=document.createElement("div"); ttl.className="title"; ttl.textContent=item.title; link.appendChild(ttl);
+      if(item.note){ const note=document.createElement("div"); note.className="note"; note.textContent=item.note; link.appendChild(note); }
+      left.appendChild(link); card.appendChild(left); grid.appendChild(card);
+    });
   }
 
-  function fillFilter(groups){
-    const sel = document.getElementById("groupFilter");
-    const current = sel.value;
-    sel.innerHTML = '<option value="">すべて表示</option>';
-    uniq(Object.keys(groups)).forEach(g=>{
-      const opt=document.createElement("option"); opt.value=g; opt.textContent=g; sel.appendChild(opt);
-    });
-    sel.value = current || "";
+  function fillFilterFrom(sorted){
+    const sel=document.getElementById("groupFilter"); const current=sel.value;
+    sel.innerHTML='<option value="">すべて表示</option>';
+    // グループは“最初に現れた順”
+    const seen=new Set();
+    sorted.forEach(it=>{ if(!seen.has(it.group)){ seen.add(it.group); const opt=document.createElement("option"); opt.value=it.group; opt.textContent=it.group; sel.appendChild(opt);} });
+    sel.value=current||"";
   }
 
   async function main(){
     try{
       diag("CSVを取得中…");
-      const raw = await fetchCSV(CSV_URL);
+      const raw=await fetchCSV(CSV_URL);
       diag("CSVを解析中…");
-      const rows = parseCSV(raw);
-      const objs = toObjects(rows);
-      const items = normalize(objs);
-      if(items.length===0){ diag("有効な行が見つかりません。ヘッダー/値をご確認ください。"); }
-      else{ diag(`${items.length}件のリンクを読み込みました。`); }
-      const groups = buildGroups(items);
-      fillFilter(groups);
-      render(groups);
-      document.getElementById("groupFilter").addEventListener("change", e=>render(groups, e.target.value));
+      const rows=parseCSV(raw);
+      const objs=toObjects(rows);
+      const items=normalize(objs);
+      const sorted=sortGlobal(items);
+      if(sorted.length===0){ diag("有効な行が見つかりません。"); } else { diag(`${sorted.length}件のリンクを読み込みました。`); }
+      fillFilterFrom(sorted);
+      renderGlobal(sorted);
+      document.getElementById("groupFilter").addEventListener("change",e=>renderGlobal(sorted, e.target.value));
     }catch(e){
-      diag("読み込みに失敗：CSVの公開設定やURLをご確認ください。");
-      console.error(e);
+      diag("読み込みに失敗：CSVの公開設定やURLをご確認ください。"); console.error(e);
     }
   }
-  (function(){ try{ main(); } catch(e){ diag("初期化エラー："+e.message); console.error(e); }})();
+  (function(){ try{ main(); }catch(e){ diag("初期化エラー："+e.message); console.error(e);} })();
 </script>
+
 
 </body>
 </html>
